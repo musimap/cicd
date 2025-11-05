@@ -15,6 +15,11 @@ jobs:
       cancel-in-progress: true
 
     steps:
+      # Record start time
+      - name: Record start time
+        id: start_time
+        run: echo "started_at=$(date +%s)" >> $GITHUB_ENV
+
       # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,6 +81,15 @@ jobs:
           domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
           domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
 
+      # Calculate duration
+      - name: Calculate duration
+        id: duration
+        run: |
+          ended_at=$(date +%s)
+          started_at=${{ env.started_at }}
+          duration=$(( ended_at - started_at ))
+          echo "duration=${duration}s" >> $GITHUB_OUTPUT
+
       # Slack notification
       - name: Send Slack notification
         uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
@@ -84,3 +98,5 @@ jobs:
           version: ${{ env.NEW_VERSION }}
           status: "📦 Package Published"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          duration: ${{ steps.duration.outputs.duration }}
+          commit-message: ${{ steps.commit.outputs.message }}

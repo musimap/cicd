@@ -12,6 +12,10 @@ inputs:
     required: false
   webhook-url:
     required: true
+  duration:
+    required: false
+  commit-message:
+    required: false
 
 runs:
   using: "composite"
@@ -34,7 +38,9 @@ runs:
                   { "type": "mrkdwn", "text": "*Version:* ${{ inputs.version }}" },
                   { "type": "mrkdwn", "text": "*Duration:* ${{ inputs.duration }}" },
                   { "type": "mrkdwn", "text": "*Branch:* ${{ github.ref_name }}" },
-                  { "type": "mrkdwn", "text": "*Triggered by:* ${{ github.actor }}" }
+                  { "type": "mrkdwn", "text": "*Triggered by:* ${{ github.actor }}" },
+                  { "type": "mrkdwn", "text": "*Commit Message:* ${{ github.event.head_commit.message }}" },
+                  { "type": "mrkdwn", "text": "*Commit ID:*\n<${{ github.event.workflow_run.head_commit.url }}|${{ github.event.workflow_run.head_commit.id }}>" }
                 ]
               },
               {
