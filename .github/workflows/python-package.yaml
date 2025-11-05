@@ -1,5 +1,9 @@
 on:
   workflow_call:
+    inputs:
+      poetry_sources:
+        required: false
+        type: string
 
 jobs:
   publish:
