@@ -1,3 +1,6 @@
+on:
+  workflow_call:
+
 jobs:
   django-ci:
     name: Test, Build, Tag & Deploy
