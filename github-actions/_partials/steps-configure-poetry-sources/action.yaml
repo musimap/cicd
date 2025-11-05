@@ -1,0 +1,44 @@
+name: Configure Poetry sources (CodeArtifact)
+description: Configures Poetry repositories and http-basic auth for CodeArtifact sources.
+
+inputs:
+  poetry-sources:
+    required: true
+    description: JSON array of name and repo for poetry sources
+  codeartifact-domain:
+    required: true
+  codeartifact-domain-owner:
+    required: true
+  aws-region:
+    required: true
+  codeartifact-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Poetry sources
+      shell: bash
+      env:
+        SOURCES_JSON: ${{ inputs.poetry-sources }}
+        DOMAIN: ${{ inputs.codeartifact-domain }}
+        OWNER: ${{ inputs.codeartifact-domain-owner }}
+        REGION: ${{ inputs.aws-region }}
+        TOKEN: ${{ inputs.codeartifact-token }}
+      run: |
+        if [ -z "$SOURCES_JSON" ]; then
+          echo "::notice::No sources provided; skipping Poetry source config."
+          exit 0
+        fi
+
+        BASE_URL="https://${DOMAIN}-${OWNER}.d.codeartifact.${REGION}.amazonaws.com/pypi"
+
+        echo "$SOURCES_JSON" | jq -c '.[]' | while read -r entry; do
+          NAME=$(echo "$entry" | jq -r '.name')
+          REPO=$(echo "$entry" | jq -r '.repo')
+
+          echo "🔐 Configuring Poetry source: ${NAME} -> ${BASE_URL}/${REPO}/"
+
+          poetry config "repositories.${NAME}" "${BASE_URL}/${REPO}/"
+          poetry config "http-basic.${NAME}" aws "$TOKEN"
+        done
