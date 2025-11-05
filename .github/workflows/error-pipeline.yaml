@@ -6,6 +6,6 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: musimap/cicd/github-actions/_partials/steps-slack-failure.yaml@main
+      - uses: musimap/cicd/github-actions/_partials/steps-slack-failure@main
         with:
           webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

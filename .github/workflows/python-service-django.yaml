@@ -17,10 +17,10 @@ jobs:
 
       # Validate repository and project structure
       - name: Validate repository
-        uses: musimap/cicd/github-actions/_partials/steps-validate-repo.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-validate-repo@main
 
       - name: Validate Python project
-        uses: musimap/cicd/github-actions/_partials/steps-validate-python.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-validate-python@main
 
       # Python & Poetry setup
       - name: Set up Python
@@ -29,14 +29,14 @@ jobs:
           python-version: "3.13"
 
       - name: Install Poetry
-        uses: musimap/cicd/github-actions/_partials/steps-install-poetry.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-install-poetry@main
         with:
           poetry-version: "1.5.1"
 
       # AWS + CodeArtifact
       - name: Configure AWS + CodeArtifact
         id: aws
-        uses: musimap/cicd/github-actions/_partials/steps-configure-aws.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -48,12 +48,12 @@ jobs:
         run: poetry install
 
       - name: Run pytest
-        uses: musimap/cicd/github-actions/_partials/steps-pytest.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-pytest@main
 
       # Versioning
       - name: Bump Poetry version (develop only)
         if: github.ref == 'refs/heads/develop'
-        uses: musimap/cicd/github-actions/_partials/steps-bump-poetry-version.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-bump-poetry-version@main
 
       - name: Get version (main)
         if: github.ref == 'refs/heads/main'
@@ -61,11 +61,11 @@ jobs:
 
       # Overlay path (Kustomize)
       - name: Set overlay path
-        uses: musimap/cicd/github-actions/_partials/steps-set-overlay-path.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-set-overlay-path@main
 
       # Build & push Docker image
       - name: Build and push Docker image
-        uses: musimap/cicd/github-actions/_partials/steps-build-docker.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
           ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
           new-version: ${{ env.NEW_VERSION }}
@@ -74,20 +74,20 @@ jobs:
 
       # Update Kustomize tag
       - name: Update Kustomize
-        uses: musimap/cicd/github-actions/_partials/steps-update-kustomize.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
         with:
           overlay-path: ${{ env.OVERLAY_PATH }}
           new-version: ${{ env.NEW_VERSION }}
 
       # Commit and push changes
       - name: Commit version & Kustomize
-        uses: musimap/cicd/github-actions/_partials/steps-commit-version.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
         with:
           files: "pyproject.toml ${{ env.OVERLAY_PATH }}"
 
       # Slack notification
       - name: Send Slack notification
-        uses: musimap/cicd/github-actions/_partials/steps-slack-notify.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
         with:
           service-name: ${{ github.event.repository.name }}
           version: ${{ env.NEW_VERSION }}

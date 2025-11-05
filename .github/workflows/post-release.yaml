@@ -10,13 +10,13 @@ jobs:
       actions: read
 
     steps:
-      - uses: musimap/cicd/github-actions/_partials/steps-checkout.yaml@main
-      - uses: musimap/cicd/github-actions/_partials/steps-merge-main-into-develop.yaml@main
+      - uses: musimap/cicd/github-actions/_partials/steps-checkout@main
+      - uses: musimap/cicd/github-actions/_partials/steps-merge-main-into-develop@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: musimap/cicd/github-actions/_partials/steps-create-github-release.yaml@main
+      - uses: musimap/cicd/github-actions/_partials/steps-create-github-release@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: musimap/cicd/github-actions/_partials/steps-slack-release-success.yaml@main
+      - uses: musimap/cicd/github-actions/_partials/steps-slack-release-success@main
         with:
           webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

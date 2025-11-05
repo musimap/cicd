@@ -17,10 +17,10 @@ jobs:
 
       # Validate repository and project structure
       - name: Validate repository
-        uses: musimap/cicd/github-actions/_partials/steps-validate-repo.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-validate-repo@main
 
       - name: Validate Python project
-        uses: musimap/cicd/github-actions/_partials/steps-validate-python.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-validate-python@main
 
       # Python & Poetry setup
       - name: Set up Python
@@ -29,14 +29,14 @@ jobs:
           python-version: "3.13"
 
       - name: Install Poetry
-        uses: musimap/cicd/github-actions/_partials/steps-install-poetry.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-install-poetry@main
         with:
           poetry-version: "1.5.1"
 
       # AWS + CodeArtifact
       - name: Configure AWS + CodeArtifact
         id: aws
-        uses: musimap/cicd/github-actions/_partials/steps-configure-aws.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -48,15 +48,15 @@ jobs:
         run: poetry install
 
       - name: Run pytest
-        uses: musimap/cicd/github-actions/_partials/steps-pytest.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-pytest@main
 
       # Bump version
       - name: Bump Poetry version
-        uses: musimap/cicd/github-actions/_partials/steps-bump-poetry-version.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-bump-poetry-version@main
 
       # Commit and push new version
       - name: Commit version bump
-        uses: musimap/cicd/github-actions/_partials/steps-commit-version.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
         with:
           files: "pyproject.toml"
 
@@ -66,7 +66,7 @@ jobs:
 
       # Publish to AWS CodeArtifact
       - name: Publish package
-        uses: musimap/cicd/github-actions/_partials/steps-publish-codeartifact.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-publish-codeartifact@main
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
@@ -74,7 +74,7 @@ jobs:
 
       # Slack notification
       - name: Send Slack notification
-        uses: musimap/cicd/github-actions/_partials/steps-slack-notify.yaml@main
+        uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
         with:
           service-name: ${{ github.event.repository.name }}
           version: ${{ env.NEW_VERSION }}
