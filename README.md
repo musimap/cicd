@@ -13,6 +13,7 @@ These workflows are designed to enforce **consistency, maintainability, and auto
 └── workflows/
     ├── python-service-django.yaml
     ├── python-package.yaml
+    ├── ...
 github-actions/
 └── _partials/
     ├── steps-bump-poetry-version.yaml
@@ -26,7 +27,8 @@ github-actions/
     ├── steps-slack-notify.yaml
     ├── steps-update-kustomize.yaml
     ├── steps-validate-python.yaml
-    └── steps-validate-repo.yaml
+    ├── steps-validate-repo.yaml
+    └── ...
 ```
 
 ---
@@ -82,6 +84,7 @@ on:
     branches:
       - develop
       - main
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -92,6 +95,14 @@ jobs:
   deploy:
     uses: musimap/cicd/.github/workflows/python-service-django.yaml@main
     secrets: inherit
+    with:
+      poetry_sources: |
+        [
+          {"name": "aws-musimap-utils", "repo": "musimap-utils"},
+          {"name": "aws-musimap-aws", "repo": "musimap-aws"},
+          {"name": "aws-musimap-audiofile", "repo": "musimap-audiofile"},
+          ...
+        ]
 ```
 
 Or for a Python package:
@@ -102,6 +113,7 @@ name: CI – Python Package
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -112,6 +124,14 @@ jobs:
   publish:
     uses: musimap/cicd/.github/workflows/python-package.yaml@main
     secrets: inherit
+    with:
+      poetry_sources: |
+        [
+          {"name": "aws-musimap-utils", "repo": "musimap-utils"},
+          {"name": "aws-musimap-aws", "repo": "musimap-aws"},
+          {"name": "aws-musimap-audiofile", "repo": "musimap-audiofile"},
+          ...
+        ]
 ```
 
 You also need to add the following workflows inside your service repo (for example `.github/workflows/error-pipeline.yaml`):
@@ -232,4 +252,4 @@ uses: musimap/cicd/github-actions/_partials/steps-pytest.yaml@v1.0.0
 
 ---
 
-© 2025 Musimap — Engineered with ❤️ by the Musimap DevOps Team.
+© 2025 Musimap — Engineered with ❤️ by Frederic Notet.
