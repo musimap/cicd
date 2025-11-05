@@ -86,6 +86,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  actions: read
 
 jobs:
   deploy:
@@ -105,6 +106,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  actions: read
 
 jobs:
   publish:
@@ -143,6 +145,11 @@ on:
       - "CI – Python Package"
     types:
       - completed
+
+permissions:
+  id-token: write
+  contents: write
+  actions: read
 
 jobs:
   post-release:
