@@ -8,13 +8,9 @@ inputs:
     required: false
   status:
     required: true
-  duration:
-    required: false
   webhook-url:
     required: true
-  duration:
-    required: false
-  commit-message:
+  duration-cicd:
     required: false
 
 runs:
@@ -36,11 +32,11 @@ runs:
                 "type": "section",
                 "fields": [
                   { "type": "mrkdwn", "text": "*Version:* ${{ inputs.version }}" },
-                  { "type": "mrkdwn", "text": "*Duration:* ${{ inputs.duration }}" },
+                  { "type": "mrkdwn", "text": "*Duration:* ${{ inputs.duration-cicd }}" },
                   { "type": "mrkdwn", "text": "*Branch:* ${{ github.ref_name }}" },
                   { "type": "mrkdwn", "text": "*Triggered by:* ${{ github.actor }}" },
                   { "type": "mrkdwn", "text": "*Commit Message:* ${{ github.event.head_commit.message }}" },
-                  { "type": "mrkdwn", "text": "*Commit ID:*\n<${{ github.event.workflow_run.head_commit.url }}|${{ github.event.workflow_run.head_commit.id }}>" }
+                  { "type": "mrkdwn", "text": "*Commit ID:*\n<${{ github.event.head_commit.url }}|${{ github.event.head_commit.id }}>" }
                 ]
               },
               {

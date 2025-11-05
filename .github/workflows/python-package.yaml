@@ -83,12 +83,12 @@ jobs:
 
       # Calculate duration
       - name: Calculate duration
-        id: duration
+        id: duration-cicd
         run: |
           ended_at=$(date +%s)
           started_at=${{ env.started_at }}
-          duration=$(( ended_at - started_at ))
-          echo "duration=${duration}s" >> $GITHUB_OUTPUT
+          duration_cicd=$(( ended_at - started_at ))
+          echo "duration_cicd=${duration_cicd}s" >> $GITHUB_OUTPUT
 
       # Slack notification
       - name: Send Slack notification
@@ -98,5 +98,4 @@ jobs:
           version: ${{ env.NEW_VERSION }}
           status: "📦 Package Published"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          duration: ${{ steps.duration.outputs.duration }}
-          commit-message: ${{ steps.commit.outputs.message }}
+          duration-cicd: ${{ steps.duration-cicd.outputs.duration_cicd }}
