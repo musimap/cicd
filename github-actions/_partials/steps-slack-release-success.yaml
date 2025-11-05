@@ -1,0 +1,39 @@
+name: Slack Release Success Notification
+description: Sends a Slack message for successful production deployment.
+
+inputs:
+  webhook_url:
+    required: true
+    description: Slack webhook URL
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send Slack success notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        webhook: ${{ inputs.webhook_url }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": { "type": "plain_text", "text": "✅ Production Release — ${{ github.event.repository.name }}" }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                  { "type": "mrkdwn", "text": "*Branch:*\nmain" },
+                  { "type": "mrkdwn", "text": "*Triggered by:*\n${{ github.actor }}" }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  { "type": "mrkdwn", "text": "🏁 *Deployment successful. Merged main → develop and published release.*" }
+                ]
+              }
+            ]
+          }

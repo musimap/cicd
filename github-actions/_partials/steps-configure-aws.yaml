@@ -1,0 +1,33 @@
+name: Configure AWS Credentials & CodeArtifact
+description: Set up AWS OIDC + CodeArtifact dynamically
+
+inputs:
+  aws-region:
+    required: true
+  aws-role:
+    required: true
+  codeartifact-domain:
+    required: true
+  codeartifact-domain-owner:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws-role }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Get CodeArtifact token for Docker
+      id: codeartifact
+      shell: bash
+      run: |
+        TOKEN=$(aws codeartifact get-authorization-token \
+          --domain ${{ inputs.codeartifact-domain }} \
+          --domain-owner ${{ inputs.codeartifact-domain-owner }} \
+          --region ${{ inputs.aws-region }} \
+          --query authorizationToken \
+          --output text)
+        echo "CODEARTIFACT_TOKEN=$TOKEN" >> $GITHUB_OUTPUT

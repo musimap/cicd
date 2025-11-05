@@ -1,0 +1,16 @@
+name: Install Poetry
+description: Installs Poetry with configurable version
+
+inputs:
+  poetry-version:
+    required: false
+    default: "1.5.1"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Poetry
+      shell: bash
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 - --version ${{ inputs.poetry-version }}
+        echo "$HOME/.local/bin" >> $GITHUB_PATH

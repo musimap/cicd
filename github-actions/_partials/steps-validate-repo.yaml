@@ -1,0 +1,29 @@
+name: Validate Repository
+description: General repository validation (structure, commit, sensitive files)
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check README presence
+      shell: bash
+      run: |
+        if [ ! -f README.md ]; then
+          echo "::warning::No README.md found at repo root."
+        fi
+
+    - name: Validate commit message
+      shell: bash
+      run: |
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        if [[ ! "$COMMIT_MSG" =~ (\[major\]|\[minor\]|\[patch\]|\[init\]|\[skip ci\]) ]] && [ ${#COMMIT_MSG} -lt 10 ]; then
+          echo "::error::Commit message too short or missing version tag."
+          exit 1
+        fi
+
+    - name: Check for sensitive files
+      shell: bash
+      run: |
+        if git ls-files | grep -E "(\.env|aws_credentials|id_rsa|secrets.json)" >/dev/null; then
+          echo "::error::Sensitive file detected in repository!"
+          exit 1
+        fi

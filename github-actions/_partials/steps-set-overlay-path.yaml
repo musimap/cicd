@@ -1,0 +1,15 @@
+name: Set Overlay Path for Kustomize
+description: Determines the overlay path based on the current branch (develop/main)
+
+runs:
+  using: "composite"
+  steps:
+    - name: Determine overlay path
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "OVERLAY_PATH=deploy/overlays/prd/kustomization.yaml" >> $GITHUB_ENV
+        else
+          echo "OVERLAY_PATH=deploy/overlays/dev/kustomization.yaml" >> $GITHUB_ENV
+        fi
+        echo "Overlay path set to: $OVERLAY_PATH"

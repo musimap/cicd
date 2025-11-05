@@ -1,0 +1,10 @@
+name: Run Pytest
+description: Executes Django tests via pytest
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run pytest
+      shell: bash
+      run: |
+        poetry run pytest src/ --maxfail=3 --disable-warnings -q

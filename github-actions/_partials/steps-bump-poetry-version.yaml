@@ -1,0 +1,27 @@
+name: Bump Poetry Version from Commit Message
+description: Updates Poetry version based on commit message tags ([init], [patch], [minor], [major])
+
+runs:
+  using: "composite"
+  steps:
+    - name: Bump version
+      id: bump
+      shell: bash
+      run: |
+        COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+        if echo "$COMMIT_MESSAGE" | grep -q "\[major\]"; then
+          poetry version major
+        elif echo "$COMMIT_MESSAGE" | grep -q "\[minor\]"; then
+          poetry version minor
+        elif echo "$COMMIT_MESSAGE" | grep -q "\[patch\]"; then
+          poetry version patch
+        elif echo "$COMMIT_MESSAGE" | grep -q "\[init\]"; then
+          poetry version 0.1.0
+        else
+          echo "::notice::No version bump tag found."
+        fi
+
+        NEW_VERSION=$(poetry version --short)
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "🔖 Bumped to version $NEW_VERSION"

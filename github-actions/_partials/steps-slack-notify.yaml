@@ -1,0 +1,45 @@
+name: Slack Notify
+description: Sends Slack notification about pipeline result
+
+inputs:
+  service-name:
+    required: true
+  version:
+    required: false
+  status:
+    required: true
+  duration:
+    required: false
+  webhook-url:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send Slack Notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        webhook: ${{ inputs.webhook-url }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": { "type": "plain_text", "text": "🚀 ${{ inputs.service-name }} — ${{ inputs.status }}" }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  { "type": "mrkdwn", "text": "*Version:* ${{ inputs.version }}" },
+                  { "type": "mrkdwn", "text": "*Duration:* ${{ inputs.duration }}" },
+                  { "type": "mrkdwn", "text": "*Branch:* ${{ github.ref_name }}" },
+                  { "type": "mrkdwn", "text": "*Triggered by:* ${{ github.actor }}" }
+                ]
+              },
+              {
+                "type": "section",
+                "text": { "type": "mrkdwn", "text": "🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View full logs>" }
+              }
+            ]
+          }

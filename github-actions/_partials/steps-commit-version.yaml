@@ -1,0 +1,20 @@
+name: Commit and Push New Version
+description: Commits updated pyproject.toml (and optionally kustomization.yaml)
+
+inputs:
+  files:
+    description: Space-separated list of files to commit
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Commit and push version bump
+      shell: bash
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+
+        git add ${{ inputs.files }}
+        git commit -m "[skip ci] Release version $NEW_VERSION" || echo "No changes to commit"
+        git push origin HEAD:${{ github.ref }}

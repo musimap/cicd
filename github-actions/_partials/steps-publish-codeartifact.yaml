@@ -1,0 +1,33 @@
+name: Publish Package to AWS CodeArtifact
+description: Publishes the built package to AWS CodeArtifact
+
+inputs:
+  aws-region:
+    required: true
+  domain:
+    required: true
+  domain-owner:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Publish to AWS CodeArtifact
+      shell: bash
+      run: |
+        echo "🔑 Fetching CodeArtifact token..."
+        TOKEN=$(aws codeartifact get-authorization-token \
+          --domain ${{ inputs.domain }} \
+          --domain-owner ${{ inputs.domain-owner }} \
+          --region ${{ inputs.aws-region }} \
+          --query authorizationToken \
+          --output text)
+
+        echo "🧩 Configuring Poetry for CodeArtifact"
+        poetry config repositories.aws "https://${{ inputs.domain }}-${{ inputs.domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/pypi/${{ github.event.repository.name }}/"
+        poetry config http-basic.aws aws "$TOKEN"
+
+        echo "📦 Publishing package to CodeArtifact..."
+        poetry publish --repository aws
+
+        echo "✅ Package published successfully."

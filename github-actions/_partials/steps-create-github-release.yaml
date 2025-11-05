@@ -1,0 +1,31 @@
+name: Create GitHub Release
+description: Creates a GitHub Release from the latest tag.
+
+inputs:
+  github_token:
+    required: true
+    description: GitHub token for authentication
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get latest tag
+      id: get_tag
+      shell: bash
+      run: |
+        TAG=$(git describe --tags --abbrev=0)
+        echo "TAG=$TAG" >> $GITHUB_ENV
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.TAG }}
+        name: "Release ${{ env.TAG }}"
+        body: |
+          🚀 Automatic production release from **main** branch.
+          - Repository: ${{ github.repository }}
+          - Tag: ${{ env.TAG }}
+          - Triggered by: ${{ github.actor }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}

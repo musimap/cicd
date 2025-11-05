@@ -1,0 +1,40 @@
+name: Slack Failure Notification
+description: Sends a Slack message for failed CI/CD runs.
+
+inputs:
+  webhook_url:
+    required: true
+    description: Slack webhook URL
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send Slack failure notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        webhook: ${{ inputs.webhook_url }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": { "type": "plain_text", "text": "🚨 CI Pipeline Failed — ${{ github.event.repository.name }}" }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                  { "type": "mrkdwn", "text": "*Branch:*\n${{ github.event.workflow_run.head_branch }}" },
+                  { "type": "mrkdwn", "text": "*Author:*\n${{ github.event.workflow_run.head_commit.author.name }}" },
+                  { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.event.workflow_run.head_commit.url }}|${{ github.event.workflow_run.head_commit.id }}>" }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  { "type": "mrkdwn", "text": "💥 *Pipeline failed.* → <${{ github.event.workflow_run.html_url }}|View Workflow Details>" }
+                ]
+              }
+            ]
+          }

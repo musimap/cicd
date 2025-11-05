@@ -1,0 +1,23 @@
+name: Validate Python Project
+description: Validates Django/Poetry-specific project structure
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check pyproject.toml presence
+      shell: bash
+      run: |
+        if [ ! -f pyproject.toml ]; then
+          echo "::error::pyproject.toml not found. Expected for Poetry project."
+          exit 1
+        fi
+
+    - name: Check deploy overlays
+      shell: bash
+      run: |
+        for path in deploy/overlays/dev/kustomization.yaml deploy/overlays/prd/kustomization.yaml; do
+          if [ ! -f "$path" ]; then
+            echo "::error::Missing $path"
+            exit 1
+          fi
+        done

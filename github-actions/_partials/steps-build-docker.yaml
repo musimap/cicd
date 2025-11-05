@@ -1,0 +1,35 @@
+name: Build and Push Docker Image
+description: Build and push Docker image to ECR
+
+inputs:
+  ecr-repo:
+    required: true
+  new-version:
+    required: true
+  aws-region:
+    required: true
+  codeartifact-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Login to ECR
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and Push Docker image
+      shell: bash
+      run: |
+        docker build \
+          --build-arg CODEARTIFACT_AUTH_TOKEN=${{ inputs.codeartifact-token }} \
+          -t ${{ inputs.ecr-repo }}:${{ inputs.new-version }} .
+
+        docker push ${{ inputs.ecr-repo }}:${{ inputs.new-version }}
+
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          docker tag ${{ inputs.ecr-repo }}:${{ inputs.new-version }} ${{ inputs.ecr-repo }}:prod-latest
+          docker push ${{ inputs.ecr-repo }}:prod-latest
+        else
+          docker tag ${{ inputs.ecr-repo }}:${{ inputs.new-version }} ${{ inputs.ecr-repo }}:dev-latest
+          docker push ${{ inputs.ecr-repo }}:dev-latest
+        fi

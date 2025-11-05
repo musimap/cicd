@@ -1,0 +1,8 @@
+jobs:
+  notify_failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: musimap/cicd/github-actions/_partials/steps-slack-failure.yaml@main
+        with:
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

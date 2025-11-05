@@ -1,0 +1,27 @@
+name: Merge main into develop
+description: Merges the main branch into develop after a successful release.
+
+inputs:
+  github_token:
+    required: true
+    description: GitHub token for authentication
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch all branches
+      shell: bash
+      run: git fetch origin develop main --tags
+
+    - name: Merge main into develop
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+
+        git checkout develop
+        git pull origin develop
+        git merge origin/main --no-edit || true
+        git push origin develop
