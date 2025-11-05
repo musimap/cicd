@@ -43,6 +43,14 @@ jobs:
           codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
           codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
 
+        # Configure Poetry Authentication with CodeArtifact Token
+      - name: Configure Poetry auth for CodeArtifact sources
+        uses: musimap/cicd/github-actions/_partials/steps-configure-poetry-sources-from-pyproject@main
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
+          codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+
       # Dependencies & Tests
       - name: Install dependencies
         run: poetry install

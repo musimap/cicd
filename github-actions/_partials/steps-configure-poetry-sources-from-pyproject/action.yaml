@@ -1,0 +1,74 @@
+name: Configure Poetry sources from pyproject (CodeArtifact only)
+description: Reads pyproject.toml, finds CodeArtifact sources by host, and injects auth tokens for those sources only.
+
+inputs:
+  aws-region:
+    required: true
+  codeartifact-domain:
+    required: true
+  codeartifact-domain-owner:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Read pyproject and list CodeArtifact source names
+      id: list_sources
+      shell: bash
+      run: |
+        python3 - "$@" << 'PYCODE' "${{ inputs.codeartifact-domain }}" "${{ inputs.codeartifact-domain-owner }}" "${{ inputs.aws-region }}"
+import sys, tomllib
+from urllib.parse import urlparse
+
+domain, owner, region = sys.argv[1], sys.argv[2], sys.argv[3]
+expected_host = f"{domain}-{owner}.d.codeartifact.{region}.amazonaws.com"
+
+try:
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+except FileNotFoundError:
+    print("::notice::No pyproject.toml found -> nothing to configure.")
+    print("SOURCES=")
+    sys.exit(0)
+
+sources = data.get("tool", {}).get("poetry", {}).get("source", [])
+names = []
+for src in sources:
+    url = src.get("url")
+    name = src.get("name")
+    if not url or not name:
+        continue
+    host = urlparse(url).netloc.lower()
+    if host == expected_host:
+        names.append(name)
+
+print(f"SOURCES={','.join(names)}")
+PYCODE
+      echo "${SOURCES}"
+      if [ -n "${SOURCES}" ]; then
+        echo "SOURCES=${SOURCES}" >> $GITHUB_ENV
+        echo "sources=${SOURCES}" >> $GITHUB_OUTPUT
+      else
+        echo "SOURCES=" >> $GITHUB_ENV
+        echo "sources=" >> $GITHUB_OUTPUT
+      fi
+
+    - name: Skip if no CodeArtifact sources
+      if: steps.list_sources.outputs.sources == ''
+      shell: bash
+      run: echo "::notice::No CodeArtifact Poetry sources found to configure."
+
+    - name: Inject credentials into Poetry (only matching sources)
+      if: steps.list_sources.outputs.sources != ''
+      shell: bash
+      run: |
+        if [ -z "$CODEARTIFACT_TOKEN" ]; then
+          echo "::error::CODEARTIFACT_TOKEN is missing from environment!"
+          exit 1
+        fi
+
+        IFS=',' read -ra NAMES <<< "${{ steps.list_sources.outputs.sources }}"
+        for NAME in "${NAMES[@]}"; do
+          echo "🔐 Configuring http-basic for Poetry source: ${NAME}"
+          poetry config "http-basic.${NAME}" aws "$CODEARTIFACT_TOKEN"
+        done
