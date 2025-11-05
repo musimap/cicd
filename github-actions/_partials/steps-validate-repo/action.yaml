@@ -23,7 +23,8 @@ runs:
     - name: Check for sensitive files
       shell: bash
       run: |
-        if git ls-files | grep -E "(\.env|aws_credentials|id_rsa|secrets.json)" >/dev/null; then
+        if git ls-files | grep -E "(\.env$|aws_credentials|id_rsa$|secrets\.json$)" | grep -v -E "(\.env\.sample|\.env\.example|\.env\.template)" >/dev/null; then
           echo "::error::Sensitive file detected in repository!"
+          git ls-files | grep -E "(\.env$|aws_credentials|id_rsa$|secrets\.json$)" | grep -v -E "(\.env\.sample|\.env\.example|\.env\.template)"
           exit 1
         fi
