@@ -1,5 +1,5 @@
 name: Build and Push Docker Image
-description: Build and push Docker image to ECR, with optional CodeArtifact token
+description: Build and push Docker image to ECR, with optional CodeArtifact token + auto VITE args
 
 inputs:
   ecr-repo:
@@ -20,22 +20,40 @@ runs:
     - name: Build and Push Docker image
       shell: bash
       run: |
-        # Build args only if token provided
+        echo "Preparing Docker build args..."
+
         BUILD_ARGS=""
+
+        # 1) Optional CodeArtifact token
         if [[ -n "${{ inputs.codeartifact-token }}" ]]; then
-          echo "CodeArtifact token detected — injecting build arg"
-          BUILD_ARGS="--build-arg CODEARTIFACT_AUTH_TOKEN=${{ inputs.codeartifact-token }}"
+          echo "→ Injecting CodeArtifact token"
+          BUILD_ARGS="$BUILD_ARGS --build-arg CODEARTIFACT_AUTH_TOKEN=${{ inputs.codeartifact-token }}"
         else
-          echo "No CodeArtifact token — building without CA build arg"
+          echo "→ No CodeArtifact token"
         fi
 
-        echo "Docker build..."
+        # 2) Auto-inject ALL Vite variables (VITE_*)
+        echo "→ Checking for VITE_* environment variables..."
+        VITE_VARS=$(env | grep '^VITE_' || true)
+
+        if [[ -n "$VITE_VARS" ]]; then
+          echo "$VITE_VARS" | while IFS='=' read -r key value; do
+            echo "   Injecting build arg: $key"
+            BUILD_ARGS="$BUILD_ARGS --build-arg $key=$value"
+          done
+        else
+          echo "   No VITE_* vars found"
+        fi
+
+        echo "Final build args: $BUILD_ARGS"
+
+        echo "Running Docker build..."
         docker build \
           $BUILD_ARGS \
           -t ${{ inputs.ecr-repo }}:${{ inputs.new-version }} \
           .
 
-        echo "Docker push versioned tag..."
+        echo "Pushing version tag..."
         docker push ${{ inputs.ecr-repo }}:${{ inputs.new-version }}
 
         if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
