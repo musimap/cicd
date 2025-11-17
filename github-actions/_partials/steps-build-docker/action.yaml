@@ -34,16 +34,11 @@ runs:
 
         # 2) Auto-inject ALL Vite variables (VITE_*)
         echo "→ Checking for VITE_* environment variables..."
-        VITE_VARS=$(env | grep '^VITE_' || true)
 
-        if [[ -n "$VITE_VARS" ]]; then
-          echo "$VITE_VARS" | while IFS='=' read -r key value; do
-            echo "   Injecting build arg: $key"
-            BUILD_ARGS="$BUILD_ARGS --build-arg $key=$value"
-          done
-        else
-          echo "   No VITE_* vars found"
-        fi
+        while IFS='=' read -r key value; do
+          echo "   Injecting build arg: $key"
+          BUILD_ARGS="$BUILD_ARGS --build-arg $key=$value"
+        done < <(env | grep '^VITE_' || true)
 
         echo "Final build args: $BUILD_ARGS"
 
