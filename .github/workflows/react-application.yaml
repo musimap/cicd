@@ -1,25 +1,12 @@
 on:
   workflow_call:
     inputs:
-      environment:
-        required: true
-        type: string
-      aws-region:
-        required: true
-        type: string
-      aws-role:
-        required: true
-        type: string
-      ecr-registry:
-        required: true
-        type: string
       vite_envs:
         required: false
         type: string
 
 jobs:
   react-ci:
-    environment: ${{ inputs.environment }}
     name: Test, Build, Tag & Deploy
     runs-on: ubuntu-latest
 
@@ -104,16 +91,16 @@ jobs:
         id: aws
         uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
         with:
-          aws-region: ${{ inputs.aws-region }}
-          aws-role: ${{ inputs.aws-role }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
       # Docker build & push
       - name: Build and push Docker image
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
-          ecr-repo: ${{ inputs.ecr-registry }}/${{ github.event.repository.name }}
-          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
-          aws-region: ${{ inputs.aws-region }}
+          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
+          new-version: ${{ env.NEW_VERSION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       # Update Kustomize overlay
       - name: Update Kustomize

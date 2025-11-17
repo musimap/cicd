@@ -1,5 +1,5 @@
 name: Build and Push Docker Image
-description: Build and push Docker image to ECR
+description: Build and push Docker image to ECR, with optional CodeArtifact token
 
 inputs:
   ecr-repo:
@@ -9,7 +9,7 @@ inputs:
   aws-region:
     required: true
   codeartifact-token:
-    required: true
+    required: false
 
 runs:
   using: "composite"
@@ -20,16 +20,30 @@ runs:
     - name: Build and Push Docker image
       shell: bash
       run: |
-        docker build \
-          --build-arg CODEARTIFACT_AUTH_TOKEN=${{ inputs.codeartifact-token }} \
-          -t ${{ inputs.ecr-repo }}:${{ inputs.new-version }} .
+        # Build args only if token provided
+        BUILD_ARGS=""
+        if [[ -n "${{ inputs.codeartifact-token }}" ]]; then
+          echo "CodeArtifact token detected — injecting build arg"
+          BUILD_ARGS="--build-arg CODEARTIFACT_AUTH_TOKEN=${{ inputs.codeartifact-token }}"
+        else
+          echo "No CodeArtifact token — building without CA build arg"
+        fi
 
+        echo "Docker build..."
+        docker build \
+          $BUILD_ARGS \
+          -t ${{ inputs.ecr-repo }}:${{ inputs.new-version }} \
+          .
+
+        echo "Docker push versioned tag..."
         docker push ${{ inputs.ecr-repo }}:${{ inputs.new-version }}
 
         if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "Tagging prod-latest"
           docker tag ${{ inputs.ecr-repo }}:${{ inputs.new-version }} ${{ inputs.ecr-repo }}:prod-latest
           docker push ${{ inputs.ecr-repo }}:prod-latest
         else
+          echo "Tagging dev-latest"
           docker tag ${{ inputs.ecr-repo }}:${{ inputs.new-version }} ${{ inputs.ecr-repo }}:dev-latest
           docker push ${{ inputs.ecr-repo }}:dev-latest
         fi
