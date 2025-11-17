@@ -1,12 +1,16 @@
 on:
   workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
       vite_envs:
         required: false
         type: string
 
 jobs:
   react-ci:
+    environment: ${{ inputs.environment }}
     name: Test, Build, Tag & Deploy
     runs-on: ubuntu-latest
 
