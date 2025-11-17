@@ -5,6 +5,7 @@ runs:
   using: composite
   steps:
     - name: Build React
+      working-directory: src
       shell: bash
       run: |
         pnpm build

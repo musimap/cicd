@@ -62,16 +62,12 @@ jobs:
 
       # Install dependencies
       - name: Install dependencies
+        working-directory: src
         run: pnpm install
 
       # Build React (inject Vite envs automatically)
       - name: Build React Application
         uses: musimap/cicd/github-actions/_partials/steps-build-react@main
-        env:
-          VITE_MUSIMAP_OIDC_BASE_URL: ${{ vars.VITE_MUSIMAP_OIDC_BASE_URL }}
-          VITE_MUSIMAP_EDGE_API_BASE_URL: ${{ vars.VITE_MUSIMAP_EDGE_API_BASE_URL }}
-          VITE_MUSIMAP_CDN_BASE_URL: ${{ vars.VITE_MUSIMAP_CDN_BASE_URL }}
-          VITE_MUSIMAP_OAUTH_CLIENT_ID: ${{ vars.VITE_MUSIMAP_OAUTH_CLIENT_ID }}
 
       # Docker build & push
       - name: Build and push Docker image
