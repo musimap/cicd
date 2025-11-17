@@ -1,5 +1,9 @@
 on:
   workflow_call:
+    inputs:
+      vite_envs:
+        required: false
+        type: string
 
 jobs:
   react-ci:
@@ -64,6 +68,19 @@ jobs:
       - name: Install dependencies
         working-directory: src
         run: pnpm install
+
+      # Export given Environment Variables
+      - name: Export Vite environment variables
+        if: ${{ inputs.vite_envs != '' }}
+        shell: bash
+        run: |
+          echo "Injecting Vite env variables:"
+          echo "${{ inputs.vite_envs }}"
+          while IFS= read -r line; do
+            if [[ "$line" != "" ]]; then
+              echo "$line" >> $GITHUB_ENV
+            fi
+          done <<< "${{ inputs.vite_envs }}"
 
       # Build React (inject Vite envs automatically)
       - name: Build React Application
