@@ -4,6 +4,15 @@ on:
       environment:
         required: true
         type: string
+      aws-region:
+        required: true
+        type: string
+      aws-role:
+        required: true
+        type: string
+      ecr-registry:
+        required: true
+        type: string
       vite_envs:
         required: false
         type: string
@@ -91,20 +100,20 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-build-react@main
 
       # AWS
-      - name: Configure AWS + CodeArtifact
+      - name: Configure AWS
         id: aws
         uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
         with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ inputs.aws-region }}
+          aws-role: ${{ inputs.aws-role }}
 
       # Docker build & push
       - name: Build and push Docker image
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
-          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
+          ecr-repo: ${{ inputs.ecr-registry }}/${{ github.event.repository.name }}
           new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ inputs.aws-region }}
 
       # Update Kustomize overlay
       - name: Update Kustomize
