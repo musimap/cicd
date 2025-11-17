@@ -1,5 +1,5 @@
 name: Bump React Version
-description: Bumps the version in package.json based on commit message markers.
+description: Updates React package.json version based on commit message tags ([init], [patch], [minor], [major])
 
 inputs:
   file:
@@ -9,38 +9,38 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Determine bump type
+    - name: Bump version
       id: bump
       shell: bash
       run: |
-        COMMIT_MSG="${{ github.event.head_commit.message }}"
-
-        if echo "$COMMIT_MSG" | grep -qi "\[major\]"; then
-          echo "type=major" >> $GITHUB_OUTPUT
-        elif echo "$COMMIT_MSG" | grep -qi "\[minor\]"; then
-          echo "type=minor" >> $GITHUB_OUTPUT
-        elif echo "$COMMIT_MSG" | grep -qi "\[patch\]"; then
-          echo "type=patch" >> $GITHUB_OUTPUT
-        else
-          echo "type=patch" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Bump version in package.json
-      shell: bash
-      run: |
         FILE="${{ inputs.file }}"
-        TYPE="${{ steps.bump.outputs.type }}"
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
 
         CURRENT=$(jq -r '.version' "$FILE")
         IFS='.' read -r major minor patch <<< "$CURRENT"
 
-        case $TYPE in
-          major) major=$((major+1)); minor=0; patch=0 ;;
-          minor) minor=$((minor+1)); patch=0 ;;
-          patch) patch=$((patch+1)) ;;
-        esac
+        # Determine bump type
+        if echo "$COMMIT_MSG" | grep -qi "\[init\]"; then
+          NEW="0.1.0"
+        elif echo "$COMMIT_MSG" | grep -qi "\[major\]"; then
+          major=$((major+1)); minor=0; patch=0
+          NEW="$major.$minor.$patch"
+        elif echo "$COMMIT_MSG" | grep -qi "\[minor\]"; then
+          minor=$((minor+1)); patch=0
+          NEW="$major.$minor.$patch"
+        elif echo "$COMMIT_MSG" | grep -qi "\[patch\]"; then
+          patch=$((patch+1))
+          NEW="$major.$minor.$patch"
+        else
+          # Default bump = patch
+          patch=$((patch+1))
+          NEW="$major.$minor.$patch"
+        fi
 
-        NEW="$major.$minor.$patch"
+        # Apply bump
         jq --arg v "$NEW" '.version = $v' "$FILE" > tmp && mv tmp "$FILE"
 
+        # Export version
         echo "NEW_VERSION=$NEW" >> $GITHUB_ENV
+        echo "version=$NEW" >> $GITHUB_OUTPUT
+        echo "🔖 Bumped to version $NEW"
