@@ -86,6 +86,14 @@ jobs:
       - name: Build React Application
         uses: musimap/cicd/github-actions/_partials/steps-build-react@main
 
+      # AWS
+      - name: Configure AWS + CodeArtifact
+        id: aws
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
       # Docker build & push
       - name: Build and push Docker image
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main

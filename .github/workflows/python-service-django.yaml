@@ -45,7 +45,7 @@ jobs:
       # AWS + CodeArtifact
       - name: Configure AWS + CodeArtifact
         id: aws
-        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws-codeartifact@main
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}

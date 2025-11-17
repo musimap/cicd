@@ -1,0 +1,38 @@
+name: Configure AWS & CodeArtifact (auto from pyproject.toml)
+description: Configures AWS credentials and sets up Poetry sources dynamically from pyproject.toml, restricted to CodeArtifact host
+
+inputs:
+  aws-region:
+    required: true
+  aws-role:
+    required: true
+  codeartifact-domain:
+    required: true
+  codeartifact-domain-owner:
+    required: true
+
+outputs:
+  CODEARTIFACT_TOKEN:
+    description: AWS CodeArtifact token
+    value: ${{ steps.token.outputs.CODEARTIFACT_TOKEN }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws-role }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Get CodeArtifact token
+      id: token
+      shell: bash
+      run: |
+        TOKEN=$(aws codeartifact get-authorization-token \
+          --domain "${{ inputs.codeartifact-domain }}" \
+          --domain-owner "${{ inputs.codeartifact-domain-owner }}" \
+          --region "${{ inputs.aws-region }}" \
+          --query authorizationToken --output text)
+        echo "CODEARTIFACT_TOKEN=$TOKEN" >> $GITHUB_ENV
+        echo "CODEARTIFACT_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
