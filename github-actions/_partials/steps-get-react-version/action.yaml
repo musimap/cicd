@@ -1,0 +1,20 @@
+name: Get React Version
+description: Extracts version from package.json
+
+inputs:
+  file:
+    required: true
+
+outputs:
+  VERSION:
+    description: Extracted version
+
+runs:
+  using: composite
+  steps:
+    - id: v
+      shell: bash
+      run: |
+        FILE="${{ inputs.file }}"
+        VERSION=$(jq -r '.version' "$FILE")
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT

@@ -1,0 +1,10 @@
+name: Build React App
+description: Runs pnpm build with injected Vite env vars
+
+runs:
+  using: composite
+  steps:
+    - name: Build React
+      shell: bash
+      run: |
+        pnpm build

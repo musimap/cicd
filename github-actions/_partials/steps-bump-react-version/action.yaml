@@ -1,0 +1,46 @@
+name: Bump React Version
+description: Bumps the version in package.json based on commit message markers.
+
+inputs:
+  file:
+    required: true
+    description: Path to package.json
+
+runs:
+  using: composite
+  steps:
+    - name: Determine bump type
+      id: bump
+      shell: bash
+      run: |
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+
+        if echo "$COMMIT_MSG" | grep -qi "\[major\]"; then
+          echo "type=major" >> $GITHUB_OUTPUT
+        elif echo "$COMMIT_MSG" | grep -qi "\[minor\]"; then
+          echo "type=minor" >> $GITHUB_OUTPUT
+        elif echo "$COMMIT_MSG" | grep -qi "\[patch\]"; then
+          echo "type=patch" >> $GITHUB_OUTPUT
+        else
+          echo "type=patch" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Bump version in package.json
+      shell: bash
+      run: |
+        FILE="${{ inputs.file }}"
+        TYPE="${{ steps.bump.outputs.type }}"
+
+        CURRENT=$(jq -r '.version' "$FILE")
+        IFS='.' read -r major minor patch <<< "$CURRENT"
+
+        case $TYPE in
+          major) major=$((major+1)); minor=0; patch=0 ;;
+          minor) minor=$((minor+1)); patch=0 ;;
+          patch) patch=$((patch+1)) ;;
+        esac
+
+        NEW="$major.$minor.$patch"
+        jq --arg v "$NEW" '.version = $v' "$FILE" > tmp && mv tmp "$FILE"
+
+        echo "NEW_VERSION=$NEW" >> $GITHUB_ENV

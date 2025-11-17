@@ -1,0 +1,114 @@
+on:
+  workflow_call:
+
+jobs:
+  react-ci:
+    name: Test, Build, Tag & Deploy
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
+
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+
+    steps:
+      # Record start time
+      - name: Record start time
+        id: start_time
+        run: echo "started_at=$(date +%s)" >> $GITHUB_ENV
+
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Validate structure
+      - name: Validate repository
+        uses: musimap/cicd/github-actions/_partials/steps-validate-repo@main
+
+      - name: Validate React project
+        uses: musimap/cicd/github-actions/_partials/steps-validate-react@main
+
+      # Setup Node + PNPM
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install PNPM
+        uses: musimap/cicd/github-actions/_partials/steps-install-pnpm@main
+
+      # Version bump (develop)
+      - name: Bump React version (develop only)
+        if: github.ref == 'refs/heads/develop'
+        uses: musimap/cicd/github-actions/_partials/steps-bump-react-version@main
+        with:
+          file: "src/package.json"
+
+      # Get version on main
+      - name: Get version (main)
+        if: github.ref == 'refs/heads/main'
+        id: get_version
+        uses: musimap/cicd/github-actions/_partials/steps-get-react-version@main
+        with:
+          file: "src/package.json"
+
+      # Overlay path for Kustomize
+      - name: Set overlay path
+        uses: musimap/cicd/github-actions/_partials/steps-set-overlay-path@main
+
+      # Install dependencies
+      - name: Install dependencies
+        run: pnpm install
+
+      # Build React (inject Vite envs automatically)
+      - name: Build React Application
+        uses: musimap/cicd/github-actions/_partials/steps-build-react@main
+        env:
+          VITE_MUSIMAP_OIDC_BASE_URL: ${{ vars.VITE_MUSIMAP_OIDC_BASE_URL }}
+          VITE_MUSIMAP_EDGE_API_BASE_URL: ${{ vars.VITE_MUSIMAP_EDGE_API_BASE_URL }}
+          VITE_MUSIMAP_CDN_BASE_URL: ${{ vars.VITE_MUSIMAP_CDN_BASE_URL }}
+          VITE_MUSIMAP_OAUTH_CLIENT_ID: ${{ vars.VITE_MUSIMAP_OAUTH_CLIENT_ID }}
+
+      # Docker build & push
+      - name: Build and push Docker image
+        uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
+        with:
+          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
+          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Update Kustomize overlay
+      - name: Update Kustomize
+        uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
+        with:
+          overlay-path: ${{ env.OVERLAY_PATH }}
+          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+
+      # Commit version + kustomize changes
+      - name: Commit version & Kustomize
+        uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
+        with:
+          files: "src/package.json ${{ env.OVERLAY_PATH }}"
+
+      # Calculate duration
+      - name: Calculate duration
+        id: duration-cicd
+        run: |
+          ended_at=$(date +%s)
+          started_at=${{ env.started_at }}
+          duration_cicd=$(( ended_at - started_at ))
+          echo "duration_cicd=${duration_cicd}s" >> $GITHUB_OUTPUT
+
+      # Slack notify
+      - name: Send Slack notification
+        uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
+        with:
+          service-name: ${{ github.event.repository.name }}
+          version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+          status: "✅ Deployed Successfully"
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          duration-cicd: ${{ steps.duration-cicd.outputs.duration_cicd }}
