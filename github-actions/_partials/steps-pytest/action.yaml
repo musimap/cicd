@@ -7,4 +7,10 @@ runs:
     - name: Run pytest
       shell: bash
       run: |
-        poetry run pytest src/ --maxfail=3 --disable-warnings -q
+        if [ -d "src" ]; then
+          echo "→ Running pytest on src/"
+          poetry run pytest src/ --maxfail=3 --disable-warnings -q
+        else
+          echo "→ No src directory found, running pytest on project root"
+          poetry run pytest . --maxfail=3 --disable-warnings -q
+        fi
