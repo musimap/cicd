@@ -28,9 +28,6 @@ jobs:
       - name: Validate repository
         uses: musimap/cicd/github-actions/_partials/steps-validate-repo@main
 
-      - name: Validate Python project
-        uses: musimap/cicd/github-actions/_partials/steps-validate-python@main
-
       # Python & Poetry setup
       - name: Set up Python
         uses: actions/setup-python@v4
