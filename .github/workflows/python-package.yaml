@@ -49,6 +49,17 @@ jobs:
           codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
           codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
 
+      # Configure Poetry sources dynamically (from inputs)
+      - name: Configure Poetry sources (CodeArtifact)
+        if: ${{ inputs.poetry_sources != '' }}
+        uses: musimap/cicd/github-actions/_partials/steps-configure-poetry-sources@main
+        with:
+          poetry-sources: ${{ inputs.poetry_sources }}
+          codeartifact-domain: ${{ secrets.CODEARTIFACT_DOMAIN }}
+          codeartifact-domain-owner: ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          codeartifact-token: ${{ steps.aws.outputs.CODEARTIFACT_TOKEN }}
+
       # Dependencies & Tests
       - name: Install dependencies
         run: poetry install
