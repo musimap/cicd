@@ -28,6 +28,9 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       # Validate structure
       - name: Validate repository
@@ -59,6 +62,12 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-get-react-version@main
         with:
           file: "src/package.json"
+
+      # Export version on main
+      - name: Export version to NEW_VERSION (main)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: echo "NEW_VERSION=${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_ENV
 
       # Overlay path for Kustomize
       - name: Set overlay path
@@ -99,7 +108,7 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
           ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
-          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+          new-version: ${{ env.NEW_VERSION }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       # Update Kustomize overlay
@@ -107,7 +116,7 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
         with:
           overlay-path: ${{ env.OVERLAY_PATH }}
-          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+          new-version: ${{ env.NEW_VERSION }}
 
       # Commit version + kustomize changes
       - name: Commit version & Kustomize
@@ -136,7 +145,7 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
         with:
           service-name: ${{ github.event.repository.name }}
-          version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
+          version: ${{ env.NEW_VERSION }}
           status: "✅ Deployed Successfully"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           duration-cicd: ${{ steps.duration-cicd.outputs.duration_cicd }}
