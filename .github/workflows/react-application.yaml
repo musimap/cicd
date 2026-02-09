@@ -99,7 +99,7 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
           ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
-          new-version: ${{ env.NEW_VERSION }}
+          new-version: ${{ env.NEW_VERSION || steps.get_version.outputs.VERSION }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       # Update Kustomize overlay
