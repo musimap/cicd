@@ -23,6 +23,9 @@ jobs:
       # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       # Validate repository and project structure
       - name: Validate repository
@@ -104,6 +107,13 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
         with:
           files: "pyproject.toml ${{ env.OVERLAY_PATH }}"
+
+      # Create and push new Tag if main
+      - name: Create Git tag (main)
+        if: github.ref == 'refs/heads/main'
+        uses: musimap/cicd/github-actions/_partials/steps-create-github-tag@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # Calculate duration
       - name: Calculate duration
