@@ -63,6 +63,12 @@ jobs:
         with:
           file: "src/package.json"
 
+      # Debug version on main
+      - name: Debug version
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "VERSION output = '${{ steps.get_version.outputs.VERSION }}'"
+
       # Export version on main
       - name: Export version to NEW_VERSION (main)
         if: github.ref == 'refs/heads/main'

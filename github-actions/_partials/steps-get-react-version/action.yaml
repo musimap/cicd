@@ -8,13 +8,14 @@ inputs:
 outputs:
   VERSION:
     description: Extracted version
+    value: ${{ steps.v.outputs.VERSION }}
 
 runs:
-  using: composite
+  using: "composite"
   steps:
     - id: v
       shell: bash
       run: |
         FILE="${{ inputs.file }}"
         VERSION=$(jq -r '.version' "$FILE")
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
