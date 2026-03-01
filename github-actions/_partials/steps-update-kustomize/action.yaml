@@ -19,7 +19,7 @@ runs:
     - name: Update image tag
       shell: bash
       run: |
-        yq e -i '.images[0].newTag = env(NEW_VERSION)' "${{ inputs.overlay-path }}"
+        yq e -i '.images[0].newTag = "${{ inputs.new-version }}"' "${{ inputs.overlay-path }}"
 
     - name: Commit and push changes
       shell: bash
@@ -40,5 +40,5 @@ runs:
         fi
 
         git add $FILES_TO_COMMIT
-        git commit -m "[skip ci] Release version $NEW_VERSION" || echo "No changes to commit"
+        git commit -m "[skip ci] Release ${NEW_VERSION} (image ${{ inputs.new-version }})" || echo "No changes to commit"
         git push origin HEAD:${{ github.ref }}
