@@ -86,12 +86,28 @@ jobs:
       - name: Set overlay path
         uses: musimap/cicd/github-actions/_partials/steps-set-overlay-path@main
 
+      # Fix Image Tag
+      - name: Compute image tag
+        shell: bash
+        run: |
+          if [[ -z "${{ env.NEW_VERSION }}" ]]; then
+            echo "NEW_VERSION is empty — aborting"
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "IMAGE_TAG=${{ env.NEW_VERSION }}" >> $GITHUB_ENV
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            echo "IMAGE_TAG=${{ env.NEW_VERSION }}-dev.${SHORT_SHA}" >> $GITHUB_ENV
+          fi
+
       # Build & push Docker image
       - name: Build and push Docker image
         uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
         with:
           ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
-          new-version: ${{ env.NEW_VERSION }}
+          new-version: ${{ env.IMAGE_TAG }}
           aws-region: ${{ secrets.AWS_REGION }}
           codeartifact-token: ${{ steps.aws.outputs.CODEARTIFACT_TOKEN }}
 
@@ -100,7 +116,7 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
         with:
           overlay-path: ${{ env.OVERLAY_PATH }}
-          new-version: ${{ env.NEW_VERSION }}
+          new-version: ${{ env.IMAGE_TAG }}
 
       # Commit and push changes
       - name: Commit version & Kustomize
