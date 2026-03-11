@@ -4,6 +4,10 @@ on:
       poetry_sources:
         required: false
         type: string
+      install_ffmpeg:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   django-ci:
@@ -44,6 +48,13 @@ jobs:
         uses: musimap/cicd/github-actions/_partials/steps-install-poetry@main
         with:
           poetry-version: "1.5.1"
+
+      # Optional ffmpeg setup
+      - name: Install ffmpeg
+        if: ${{ inputs.install_ffmpeg }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       # AWS + CodeArtifact
       - name: Configure AWS + CodeArtifact
