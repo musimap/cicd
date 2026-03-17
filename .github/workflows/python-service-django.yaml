@@ -62,7 +62,7 @@ jobs:
         if: ${{ inputs.install_ffmpeg }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg libmagic1
 
       # AWS + CodeArtifact
       - name: Configure AWS + CodeArtifact
