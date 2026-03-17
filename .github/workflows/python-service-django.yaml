@@ -8,6 +8,14 @@ on:
         required: false
         type: boolean
         default: false
+      python_version:
+        required: false
+        type: string
+        default: "3.13"
+      poetry_version:
+        required: false
+        type: string
+        default: "1.5.1"
 
 jobs:
   django-ci:
@@ -42,12 +50,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.13"
+          python-version: ${{ inputs.python_version }}
 
       - name: Install Poetry
         uses: musimap/cicd/github-actions/_partials/steps-install-poetry@main
         with:
-          poetry-version: "1.5.1"
+          poetry-version: ${{ inputs.poetry_version }}
 
       # Optional ffmpeg setup
       - name: Install ffmpeg
