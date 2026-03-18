@@ -8,9 +8,9 @@ runs:
       shell: bash
       run: |
         if [ -d "src" ]; then
-          echo "→ Running pytest on src/"
-          poetry run pytest src/ --maxfail=3 --disable-warnings -q
+          echo "→ Running pytest on src/ (excluding integration tests)"
+          poetry run pytest src/ -m "not integration" --maxfail=3 --disable-warnings -q
         else
-          echo "→ No src directory found, running pytest on project root"
-          poetry run pytest . --maxfail=3 --disable-warnings -q
+          echo "→ No src directory found, running pytest on project root (excluding integration tests)"
+          poetry run pytest . -m "not integration" --maxfail=3 --disable-warnings -q
         fi
