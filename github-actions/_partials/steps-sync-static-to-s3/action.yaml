@@ -61,6 +61,7 @@ runs:
         CMD+=(--exclude '.git/*')
         CMD+=(--exclude '.github/*')
         CMD+=(--exclude 'README.md')
+        CMD+=(--exclude '.gitignore')
         CMD+=(--exclude '.DS_Store')
 
         while IFS= read -r line || [[ -n "$line" ]]; do
