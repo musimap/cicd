@@ -1,0 +1,79 @@
+name: Sync static files to S3
+description: |
+  Runs aws s3 sync from a local directory to a bucket (with sensible default excludes).
+  Default excludes: .git, .github, root README.md, .DS_Store.
+
+inputs:
+  bucket:
+    description: Target S3 bucket name (without s3:// prefix)
+    required: true
+  source-directory:
+    description: Directory to sync from (relative to workspace root)
+    required: false
+    default: "."
+  s3-prefix:
+    description: Optional key prefix inside the bucket (no leading slash; trailing slash optional)
+    required: false
+    default: ""
+  delete-removed:
+    description: If true, add --delete so objects absent locally are removed from the bucket/prefix
+    required: false
+    default: "false"
+  extra-excludes:
+    description: |
+      Additional aws s3 sync --exclude patterns, one per line (paths relative to source-directory).
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Sync to S3
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        BUCKET="${{ inputs.bucket }}"
+        SRC="${{ inputs.source-directory }}"
+        PREFIX_RAW="${{ inputs.s3-prefix }}"
+        DELETE_FLAG=""
+        if [[ "${{ inputs.delete-removed }}" == "true" ]]; then
+          DELETE_FLAG="--delete"
+        fi
+
+        # Normalize prefix: strip leading slashes; ensure trailing slash if non-empty
+        PREFIX="${PREFIX_RAW#/}"
+        PREFIX="${PREFIX%/}"
+        if [[ -n "$PREFIX" ]]; then
+          DEST="s3://${BUCKET}/${PREFIX}/"
+        else
+          DEST="s3://${BUCKET}/"
+        fi
+
+        if [[ ! -d "$SRC" ]]; then
+          echo "Source directory does not exist: $SRC"
+          exit 1
+        fi
+
+        echo "Syncing from '$SRC' to '$DEST'"
+
+        CMD=(aws s3 sync "$SRC" "$DEST")
+        CMD+=(--exclude '.git/*')
+        CMD+=(--exclude '.github/*')
+        CMD+=(--exclude 'README.md')
+        CMD+=(--exclude '.DS_Store')
+
+        while IFS= read -r line || [[ -n "$line" ]]; do
+          line="${line#"${line%%[![:space:]]*}"}"
+          line="${line%"${line##*[![:space:]]}"}"
+          [[ -z "$line" ]] && continue
+          [[ "$line" =~ ^# ]] && continue
+          CMD+=(--exclude "$line")
+        done <<< "${{ inputs.extra-excludes }}"
+
+        if [[ -n "$DELETE_FLAG" ]]; then
+          CMD+=("$DELETE_FLAG")
+        fi
+
+        printf 'Running: '; printf '%q ' "${CMD[@]}"; echo
+        "${CMD[@]}"

@@ -1,0 +1,85 @@
+on:
+  workflow_call:
+    inputs:
+      aws_s3_bucket_name:
+        required: true
+        type: string
+      s3_prefix:
+        description: Optional prefix inside the bucket (e.g. docs or v1)
+        required: false
+        type: string
+        default: ""
+      source_directory:
+        description: Directory to publish (relative to repo root)
+        required: false
+        type: string
+        default: "."
+      sync_delete:
+        description: If true, remove S3 objects under the prefix that no longer exist locally
+        required: false
+        type: boolean
+        default: false
+      extra_sync_excludes:
+        description: Extra lines passed to aws s3 sync --exclude (one pattern per line)
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish static files to S3
+
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: true
+
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Record start time
+        id: start_time
+        run: echo "started_at=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS
+        id: aws
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Sync static files to S3
+        uses: musimap/cicd/github-actions/_partials/steps-sync-static-to-s3@main
+        with:
+          bucket: ${{ inputs.aws_s3_bucket_name }}
+          source-directory: ${{ inputs.source_directory }}
+          s3-prefix: ${{ inputs.s3_prefix }}
+          delete-removed: ${{ inputs.sync_delete }}
+          extra-excludes: ${{ inputs.extra_sync_excludes }}
+
+      - name: Export version label for notifications
+        shell: bash
+        run: echo "NEW_VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Calculate duration
+        id: duration-cicd
+        run: |
+          ended_at=$(date +%s)
+          started_at=${{ env.started_at }}
+          duration_cicd=$(( ended_at - started_at ))
+          echo "duration_cicd=${duration_cicd}s" >> $GITHUB_OUTPUT
+
+      - name: Send Slack notification
+        uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
+        with:
+          service-name: ${{ github.event.repository.name }}
+          version: ${{ env.NEW_VERSION }}
+          status: "📦 Static Files Published On S3"
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          duration-cicd: ${{ steps.duration-cicd.outputs.duration_cicd }}
