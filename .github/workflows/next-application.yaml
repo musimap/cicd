@@ -1,0 +1,148 @@
+on:
+  workflow_call:
+    inputs:
+      node_envs:
+        required: false
+        type: string
+
+jobs:
+  next-ci:
+    name: Test, Build, Tag & Deploy
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
+
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+
+    steps:
+      - name: Record start time
+        id: start_time
+        run: echo "started_at=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate repository
+        uses: musimap/cicd/github-actions/_partials/steps-validate-repo@main
+
+      - name: Validate Next project
+        uses: musimap/cicd/github-actions/_partials/steps-validate-next@main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/package-lock.json
+
+      - name: Bump app version (develop only)
+        if: github.ref == 'refs/heads/develop'
+        uses: musimap/cicd/github-actions/_partials/steps-bump-react-version@main
+        with:
+          file: "src/package.json"
+
+      - name: Get version (main)
+        if: github.ref == 'refs/heads/main'
+        id: get_version
+        uses: musimap/cicd/github-actions/_partials/steps-get-react-version@main
+        with:
+          file: "src/package.json"
+
+      - name: Export version to NEW_VERSION (main)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: echo "NEW_VERSION=${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_ENV
+
+      - name: Set overlay path
+        uses: musimap/cicd/github-actions/_partials/steps-set-overlay-path@main
+
+      - name: Install dependencies
+        working-directory: src
+        run: npm ci --include=optional
+
+      - name: Run tests
+        working-directory: src
+        run: npm run test --if-present
+
+      - name: Export Node environment variables
+        if: ${{ inputs.node_envs != '' }}
+        shell: bash
+        run: |
+          echo "Injecting Node env variables:"
+          echo "${{ inputs.node_envs }}"
+          while IFS= read -r line; do
+            if [[ "$line" != "" ]]; then
+              echo "$line" >> $GITHUB_ENV
+            fi
+          done <<< "${{ inputs.node_envs }}"
+
+      - name: Configure AWS
+        id: aws
+        uses: musimap/cicd/github-actions/_partials/steps-configure-aws@main
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Compute image tag
+        shell: bash
+        run: |
+          if [[ -z "${{ env.NEW_VERSION }}" ]]; then
+            echo "NEW_VERSION is empty — aborting"
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "IMAGE_TAG=${{ env.NEW_VERSION }}" >> $GITHUB_ENV
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            echo "IMAGE_TAG=${{ env.NEW_VERSION }}-dev.${SHORT_SHA}" >> $GITHUB_ENV
+          fi
+
+      - name: Build and push Docker image
+        uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
+        with:
+          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ github.event.repository.name }}
+          new-version: ${{ env.IMAGE_TAG }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Kustomize
+        uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
+        with:
+          overlay-path: ${{ env.OVERLAY_PATH }}
+          new-version: ${{ env.IMAGE_TAG }}
+
+      - name: Commit version & Kustomize
+        uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
+        with:
+          files: "src/package.json ${{ env.OVERLAY_PATH }}"
+
+      - name: Create Git tag (main)
+        if: github.ref == 'refs/heads/main'
+        uses: musimap/cicd/github-actions/_partials/steps-create-github-tag@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate duration
+        id: duration-cicd
+        run: |
+          ended_at=$(date +%s)
+          started_at=${{ env.started_at }}
+          duration_cicd=$(( ended_at - started_at ))
+          echo "duration_cicd=${duration_cicd}s" >> $GITHUB_OUTPUT
+
+      - name: Send Slack notification
+        uses: musimap/cicd/github-actions/_partials/steps-slack-notify@main
+        with:
+          service-name: ${{ github.event.repository.name }}
+          version: ${{ env.NEW_VERSION }}
+          status: "✅ Deployed Successfully"
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          duration-cicd: ${{ steps.duration-cicd.outputs.duration_cicd }}

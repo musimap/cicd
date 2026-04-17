@@ -1,5 +1,5 @@
 name: Build and Push Docker Image
-description: Build and push Docker image to ECR, with optional CodeArtifact token + auto VITE args
+description: Build and push Docker image to ECR, with optional CodeArtifact token + auto VITE/NEXT_PUBLIC args
 
 inputs:
   ecr-repo:
@@ -32,13 +32,12 @@ runs:
           echo "→ No CodeArtifact token"
         fi
 
-        # 2) Auto-inject ALL Vite variables (VITE_*)
-        echo "→ Checking for VITE_* environment variables..."
-
+        # 2) Auto-inject frontend variables (VITE_* and NEXT_PUBLIC_*)
+        echo "→ Checking for VITE_* and NEXT_PUBLIC_* environment variables..."
         while IFS='=' read -r key value; do
           echo "   Injecting build arg: $key"
           BUILD_ARGS="$BUILD_ARGS --build-arg $key=$value"
-        done < <(env | grep '^VITE_' || true)
+        done < <(env | awk -F= '$1 ~ /^(VITE_|NEXT_PUBLIC_)/ { print $0 }')
 
         echo "Final build args: $BUILD_ARGS"
 

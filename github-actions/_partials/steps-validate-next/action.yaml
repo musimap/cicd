@@ -1,0 +1,14 @@
+name: Validate Next project
+description: Basic checks for Next.js project structure
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        test -f src/package.json || { echo "❌ src/package.json missing"; exit 1; }
+        if [ ! -f src/package-lock.json ] && [ ! -f src/pnpm-lock.yaml ] && [ ! -f src/yarn.lock ]; then
+          echo "❌ No lock file found in src/ (package-lock.json, pnpm-lock.yaml, yarn.lock)"
+          exit 1
+        fi
+        echo "Next project validated ✔"
