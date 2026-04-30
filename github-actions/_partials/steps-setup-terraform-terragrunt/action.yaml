@@ -37,7 +37,8 @@ runs:
         TG_VERSION: ${{ steps.versions.outputs.terragrunt_version }}
       run: |
         set -euo pipefail
-        curl -sSL -o /tmp/tg.zip "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64.zip"
-        sudo unzip -o /tmp/tg.zip -d /usr/local/bin
-        chmod +x /usr/local/bin/terragrunt
+        # Releases ship terragrunt_linux_amd64 as a standalone binary (not *.zip).
+        curl -fsSL -o /tmp/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64"
+        sudo install -m 0755 /tmp/terragrunt /usr/local/bin/terragrunt
+        rm -f /tmp/terragrunt
         terragrunt --version
