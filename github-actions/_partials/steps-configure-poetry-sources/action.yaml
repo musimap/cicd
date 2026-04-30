@@ -37,10 +37,8 @@ runs:
           NAME=$(echo "$entry" | jq -r '.name')
           REPO=$(echo "$entry" | jq -r '.repo')
 
-          # PEP 503 simple API (must match urls in pyproject.toml [[tool.poetry.source]])
-          SIMPLE_URL="${BASE_URL}/${REPO}/simple/"
-          echo "Configuring Poetry source: ${NAME} -> ${SIMPLE_URL}"
+          echo "Configuring Poetry source: ${NAME} -> ${BASE_URL}/${REPO}/"
 
-          poetry config "repositories.${NAME}" "${SIMPLE_URL}"
+          poetry config "repositories.${NAME}" "${BASE_URL}/${REPO}/"
           poetry config "http-basic.${NAME}" aws "$TOKEN"
         done
