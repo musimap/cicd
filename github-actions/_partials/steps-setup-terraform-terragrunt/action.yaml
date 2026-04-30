@@ -1,0 +1,43 @@
+name: Setup Terraform and Terragrunt (pinned versions)
+description: Reads .tool-versions at infrastructure repo root and installs matching terraform + terragrunt binaries.
+
+inputs:
+  infrastructure-repo-path:
+    description: Path to the infrastructure repository root (relative to GITHUB_WORKSPACE)
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Parse .tool-versions
+      id: versions
+      shell: bash
+      run: |
+        set -euo pipefail
+        ROOT="${GITHUB_WORKSPACE}/${{ inputs.infrastructure-repo-path }}"
+        cd "$ROOT"
+        TF="$(awk '/^terraform[[:space:]]+/ {print $2}' .tool-versions | head -1)"
+        TG="$(awk '/^terragrunt[[:space:]]+/ {print $2}' .tool-versions | head -1)"
+        if [[ -z "$TF" || -z "$TG" ]]; then
+          echo "::error::Missing terraform or terragrunt version in .tool-versions"
+          exit 1
+        fi
+        echo "terraform_version=$TF" >> "$GITHUB_OUTPUT"
+        echo "terragrunt_version=$TG" >> "$GITHUB_OUTPUT"
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ steps.versions.outputs.terraform_version }}
+
+    - name: Install Terragrunt
+      shell: bash
+      env:
+        TG_VERSION: ${{ steps.versions.outputs.terragrunt_version }}
+      run: |
+        set -euo pipefail
+        curl -sSL -o /tmp/tg.zip "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64.zip"
+        sudo unzip -o /tmp/tg.zip -d /usr/local/bin
+        chmod +x /usr/local/bin/terragrunt
+        terragrunt --version

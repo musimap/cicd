@@ -21,3 +21,21 @@ runs:
             exit 1
           fi
         done
+
+    - name: Enforce musimap-utils dependency
+      shell: bash
+      run: |
+        # Every Python repo at MusiMap MUST depend on musimap-utils
+        # (single source of truth for shared utilities — see
+        # musigraph-docs/engineering/guidelines.md). The check is a
+        # plain grep against pyproject.toml so it works regardless of
+        # whether the dependency is declared in the main group or in
+        # an extras group. The matching pattern allows quoted or
+        # unquoted keys, with or without surrounding whitespace.
+        if ! grep -Eq '^[[:space:]]*"?musimap-utils"?[[:space:]]*=' pyproject.toml; then
+          echo "::error::Missing dependency 'musimap-utils' in pyproject.toml."
+          echo "::error::Every MusiMap Python codebase must depend on musimap-utils."
+          echo "::error::See musigraph-docs/engineering/guidelines.md → 'Mandatory shared library'."
+          exit 1
+        fi
+        echo "✓ musimap-utils dependency declared in pyproject.toml"
