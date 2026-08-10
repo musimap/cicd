@@ -16,6 +16,24 @@ on:
         required: false
         type: string
         default: "1.5.1"
+      # PostgreSQL service for apps that use Django ORM (e.g. vdr-app).
+      # Stateless apps with a dummy DATABASES backend ignore the container.
+      postgres_image:
+        required: false
+        type: string
+        default: "postgres:16-alpine"
+      postgres_db:
+        required: false
+        type: string
+        default: "app_test"
+      postgres_user:
+        required: false
+        type: string
+        default: "app"
+      postgres_password:
+        required: false
+        type: string
+        default: "app"
 
 jobs:
   django-ci:
@@ -25,7 +43,29 @@ jobs:
     concurrency:
       group: deploy-${{ github.ref }}
       cancel-in-progress: true
-    
+
+    services:
+      postgres:
+        image: ${{ inputs.postgres_image }}
+        env:
+          POSTGRES_DB: ${{ inputs.postgres_db }}
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ${{ inputs.postgres_user }} -d ${{ inputs.postgres_db }}"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${{ inputs.postgres_db }}
+      POSTGRES_USER: ${{ inputs.postgres_user }}
+      POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+
     steps:
       # Record start time
       - name: Record start time

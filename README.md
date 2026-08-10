@@ -41,11 +41,32 @@ Reusable CI/CD pipeline for Django/DRF services.
 **Includes:**
 - Poetry setup
 - AWS CodeArtifact integration
+- PostgreSQL service container (for ORM-backed apps; ignored by dummy-DB apps)
 - Docker build & ECR push
 - Kustomize image update
 - Slack notifications
 
 **Triggered on:** push to `develop` or `main`
+
+**Optional `with` inputs for Postgres-backed apps** (defaults shown):
+
+| Input | Default | Notes |
+|-------|---------|-------|
+| `postgres_image` | `postgres:16-alpine` | Service image |
+| `postgres_db` | `app_test` | Must match app pytest defaults |
+| `postgres_user` | `app` | Superuser in the service container |
+| `postgres_password` | `app` | |
+
+Example for an ORM-backed service:
+
+```yaml
+with:
+  postgres_db: "vdr_test"
+  postgres_user: "vdr"
+  postgres_password: "vdr"
+```
+
+The job exports `POSTGRES_HOST=127.0.0.1`, `POSTGRES_PORT=5432`, and the credentials above for pytest.
 
 ---
 
