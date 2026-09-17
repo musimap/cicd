@@ -10,6 +10,14 @@ inputs:
     required: true
   codeartifact-token:
     required: false
+  dockerfile:
+    description: Dockerfile path relative to context (default Dockerfile)
+    required: false
+    default: "Dockerfile"
+  context:
+    description: Docker build context directory
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -20,9 +28,12 @@ runs:
     - name: Build and Push Docker image
       shell: bash
       run: |
+        set -euo pipefail
         echo "Preparing Docker build args..."
 
         BUILD_ARGS=""
+        DOCKERFILE="${{ inputs.dockerfile }}"
+        CONTEXT="${{ inputs.context }}"
 
         # 1) Optional CodeArtifact token
         if [[ -n "${{ inputs.codeartifact-token }}" ]]; then
@@ -40,12 +51,14 @@ runs:
         done < <(env | awk -F= '$1 ~ /^(VITE_|NEXT_PUBLIC_)/ { print $0 }')
 
         echo "Final build args: $BUILD_ARGS"
+        echo "Dockerfile: $DOCKERFILE  context: $CONTEXT"
 
         echo "Running Docker build..."
         docker build \
+          -f "$DOCKERFILE" \
           $BUILD_ARGS \
           -t ${{ inputs.ecr-repo }}:${{ inputs.new-version }} \
-          .
+          "$CONTEXT"
 
         echo "Pushing version tag..."
         docker push ${{ inputs.ecr-repo }}:${{ inputs.new-version }}

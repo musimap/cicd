@@ -6,6 +6,10 @@ inputs:
     required: true
   new-version:
     required: true
+  extra-files:
+    description: Optional space-separated extra paths to include in the release commit (e.g. digest-pinned manifests)
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -37,6 +41,11 @@ runs:
         # React project
         if [ -f "src/package.json" ]; then
           FILES_TO_COMMIT="$FILES_TO_COMMIT src/package.json"
+        fi
+
+        # Optional secondary artifact pins (e.g. Icecast digest manifest)
+        if [ -n "${{ inputs.extra-files }}" ]; then
+          FILES_TO_COMMIT="$FILES_TO_COMMIT ${{ inputs.extra-files }}"
         fi
 
         git add $FILES_TO_COMMIT

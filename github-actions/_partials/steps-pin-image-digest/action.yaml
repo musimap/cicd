@@ -1,0 +1,83 @@
+name: Pin container image digest in a Kubernetes manifest
+description: >
+  Resolve the immutable ECR digest for a pushed tag and write
+  registry/repo@sha256:... into a Deployment (or similar) image field.
+  Used for secondary artifacts (e.g. msm-audio-streamer Icecast) that must
+  not use mutable tags as the cluster source of truth.
+
+inputs:
+  ecr-repo:
+    description: Full ECR repository URI (without tag)
+    required: true
+  image-tag:
+    description: Tag that was just pushed
+    required: true
+  manifest-path:
+    description: Path to Kubernetes manifest containing the image field
+    required: true
+  image-yq-path:
+    description: yq path to the image string (Deployment container)
+    required: false
+    default: ".spec.template.spec.containers[0].image"
+
+outputs:
+  digest:
+    description: sha256 digest (without registry prefix)
+    value: ${{ steps.pin.outputs.digest }}
+  image-ref:
+    description: Full immutable image reference
+    value: ${{ steps.pin.outputs.image-ref }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install yq
+      shell: bash
+      run: |
+        if ! command -v yq >/dev/null 2>&1; then
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+        fi
+
+    - name: Resolve digest and pin manifest
+      id: pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        REPO="${{ inputs.ecr-repo }}"
+        TAG="${{ inputs.image-tag }}"
+        MANIFEST="${{ inputs.manifest-path }}"
+        YQ_PATH='${{ inputs.image-yq-path }}'
+
+        if [[ ! -f "$MANIFEST" ]]; then
+          echo "Manifest not found: $MANIFEST" >&2
+          exit 1
+        fi
+
+        # RepoDigests populated after push to the same daemon.
+        DIGEST_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "${REPO}:${TAG}")
+        if [[ -z "$DIGEST_REF" || "$DIGEST_REF" == "<no value>" ]]; then
+          echo "Failed to resolve RepoDigests for ${REPO}:${TAG}" >&2
+          exit 1
+        fi
+        # DIGEST_REF = registry/repo@sha256:...
+        DIGEST="${DIGEST_REF#*@}"
+        if [[ "$DIGEST" != sha256:* ]]; then
+          echo "Unexpected digest format: $DIGEST_REF" >&2
+          exit 1
+        fi
+        IMAGE_REF="${REPO}@${DIGEST}"
+
+        echo "Pinning ${MANIFEST} → ${IMAGE_REF}"
+        yq e -i "${YQ_PATH} = \"${IMAGE_REF}\"" "$MANIFEST"
+
+        # Sanity: must remain digest-pinned (never :latest as SoT).
+        PINNED=$(yq e "${YQ_PATH}" "$MANIFEST")
+        if [[ "$PINNED" != *"@sha256:"* ]]; then
+          echo "Pin failed; image is not digest-pinned: $PINNED" >&2
+          exit 1
+        fi
+
+        echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+        echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+        echo "EXTRA_IMAGE_DIGEST_FILE=${MANIFEST}" >> "$GITHUB_ENV"

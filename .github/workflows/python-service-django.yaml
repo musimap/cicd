@@ -34,6 +34,31 @@ on:
         required: false
         type: string
         default: "app"
+      # Optional secondary deployable image owned by the same repository
+      # (e.g. msm-audio-streamer Icecast). When dockerfile is set, CI builds
+      # and pushes that image, then pins an immutable digest into digest_manifest.
+      extra_image_dockerfile:
+        required: false
+        type: string
+        default: ""
+      extra_image_ecr_repo:
+        description: ECR repository name (not full URI), e.g. msm-audio-streamer-icecast
+        required: false
+        type: string
+        default: ""
+      extra_image_digest_manifest:
+        description: Manifest path whose container image field is digest-pinned
+        required: false
+        type: string
+        default: ""
+      extra_image_watch_paths:
+        description: >
+          Newline-separated path prefixes. When non-empty, rebuild the extra
+          image only if the push touched one of them (or on workflow_dispatch).
+          Empty = rebuild on every release when dockerfile is configured.
+        required: false
+        type: string
+        default: ""
 
 jobs:
   django-ci:
@@ -170,18 +195,95 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           codeartifact-token: ${{ steps.aws.outputs.CODEARTIFACT_TOKEN }}
 
+      # Optional secondary image (same release ownership, separate ECR + digest pin)
+      - name: Validate secondary image inputs
+        if: ${{ inputs.extra_image_dockerfile != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ inputs.extra_image_ecr_repo }}" ]]; then
+            echo "extra_image_ecr_repo is required when extra_image_dockerfile is set" >&2
+            exit 1
+          fi
+          if [[ -z "${{ inputs.extra_image_digest_manifest }}" ]]; then
+            echo "extra_image_digest_manifest is required when extra_image_dockerfile is set" >&2
+            exit 1
+          fi
+          if [[ ! -f "${{ inputs.extra_image_digest_manifest }}" ]]; then
+            echo "digest manifest missing: ${{ inputs.extra_image_digest_manifest }}" >&2
+            exit 1
+          fi
+          if [[ ! -f "${{ inputs.extra_image_dockerfile }}" ]]; then
+            echo "dockerfile missing: ${{ inputs.extra_image_dockerfile }}" >&2
+            exit 1
+          fi
+
+      - name: Decide whether to build secondary image
+        id: extra-image
+        if: ${{ inputs.extra_image_dockerfile != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD=false
+          if [[ -z "${{ inputs.extra_image_watch_paths }}" ]]; then
+            BUILD=true
+            echo "No watch paths configured → rebuild secondary image every release"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            BUILD=true
+            echo "workflow_dispatch → force secondary image rebuild"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+              BUILD=true
+              echo "No previous SHA → rebuild secondary image"
+            else
+              CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" || true)
+              while IFS= read -r prefix; do
+                prefix=$(echo "$prefix" | sed 's/[[:space:]]*$//')
+                [[ -z "$prefix" ]] && continue
+                if echo "$CHANGED" | grep -q "^${prefix}"; then
+                  BUILD=true
+                  echo "Change under '${prefix}' → rebuild secondary image"
+                  break
+                fi
+              done <<< "${{ inputs.extra_image_watch_paths }}"
+            fi
+          fi
+          if [[ "$BUILD" != "true" ]]; then
+            echo "Icecast/secondary build context unchanged → skip rebuild"
+          fi
+          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push secondary Docker image
+        if: ${{ inputs.extra_image_dockerfile != '' && steps.extra-image.outputs.build == 'true' }}
+        uses: musimap/cicd/github-actions/_partials/steps-build-docker@main
+        with:
+          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ inputs.extra_image_ecr_repo }}
+          new-version: ${{ env.IMAGE_TAG }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          dockerfile: ${{ inputs.extra_image_dockerfile }}
+
+      - name: Pin secondary image digest in manifest
+        if: ${{ inputs.extra_image_dockerfile != '' && steps.extra-image.outputs.build == 'true' }}
+        uses: musimap/cicd/github-actions/_partials/steps-pin-image-digest@main
+        with:
+          ecr-repo: ${{ secrets.ECR_REGISTRY }}/${{ inputs.extra_image_ecr_repo }}
+          image-tag: ${{ env.IMAGE_TAG }}
+          manifest-path: ${{ inputs.extra_image_digest_manifest }}
+
       # Update Kustomize tag
       - name: Update Kustomize
         uses: musimap/cicd/github-actions/_partials/steps-update-kustomize@main
         with:
           overlay-path: ${{ env.OVERLAY_PATH }}
           new-version: ${{ env.IMAGE_TAG }}
+          extra-files: ${{ inputs.extra_image_digest_manifest }}
 
       # Commit and push changes
       - name: Commit version & Kustomize
         uses: musimap/cicd/github-actions/_partials/steps-commit-version@main
         with:
-          files: "pyproject.toml ${{ env.OVERLAY_PATH }}"
+          files: "pyproject.toml ${{ env.OVERLAY_PATH }} ${{ inputs.extra_image_digest_manifest }}"
 
       # Create and push new Tag if main
       - name: Create Git tag (main)
